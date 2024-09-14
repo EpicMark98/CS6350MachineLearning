@@ -1,0 +1,14 @@
+sunny,hot,high,weak,-
+sunny,hot,high,strong,-
+overcast,hot,high,weak,+
+rainy,mild,high,weak,+
+rainy,cool,normal,weak,-
+rainy,cool,normal,strong,+
+overcast,cool,normal,strong,+
+sunny,mild,high,weak,-
+sunny,cool,normal,weak,+
+rainy,mild,normal,weak,+
+sunny,mild,normal,strong,+
+overcast,mild,high,strong,+
+overcast,hot,normal,weak,+
+rainy,mild,high,strong,-

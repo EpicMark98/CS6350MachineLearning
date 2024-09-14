@@ -1,24 +1,32 @@
 import numpy as np
 
-# Helper method to parse the data-desc.txt file. Returns an ordered list of strings representing the attributes
+# Helper method to parse the data-desc.txt file. Returns a dictionary of attribute name as key and lsit of attribute values as value
 def create_attribute_set():
-    # Use a boolean to flag when we have reached the column labels section
-    foundAttributes = False
-    attributes = []
+    attributes = {}
+    attributeNameList = [] # Ordered list of attribute names needed only for loading the dataset
     with open("data-desc.txt", 'r') as f:
         for line in f:
-            if foundAttributes:                    # This line has the attributes so split the line and ignore the 'labels' entry
-                for item in line.strip().split(','):
-                    if (item != "label"):
-                        attributes.append(item)
-            elif line.startswith("| columns"):     # The next line is the attributes so set the flag now
-                foundAttributes = True
-    return attributes
+            sections = line.strip().split(':')
 
-# Loads the training data into a list of dictionaries from train.csv
-def load_training_examples():
+            # Skip lines that don't have an attribute
+            if len(sections) == 1:
+                continue
+
+            # Add the list of attribute values to the dictionary
+            attributeValues = sections[1].strip('.').strip().split(',')
+
+            # Remove whitespace
+            for i in range(len(attributeValues)):
+                attributeValues[i] = attributeValues[i].strip()
+
+            attributes[sections[0]] = attributeValues
+            attributeNameList.append(sections[0])
+    return attributes, attributeNameList
+
+# Loads the data into a list of dictionaries
+def load_examples(attributes, filename = "train.csv"):
     dataset = []
-    with open("train.csv", 'r') as f:
+    with open(filename, 'r') as f:
         # For each example
         for line in f:
             # Get the attribute values
@@ -44,9 +52,10 @@ class SplitMetric():
 
 # Class to hold a decision tree node
 class DecisionTreeNode:
-    isLeaf = False  # Marks if the node is a leaf or not
-    childNodes = {} # Dictionary of attribute value (string) to DecisionTreeNode                   
-    value = ""      # If leaf, contains label. Otherwise, contains attribute name that is being split on
+    def __init__(self):
+        self.isLeaf = False  # Marks if the node is a leaf or not
+        self.childNodes = {} # Dictionary of attribute value (string) to DecisionTreeNode                   
+        self.value = ""      # If leaf, contains label. Otherwise, contains attribute name that is being split on
 
 # Returns true if all items in S have the same label and false otherwise
 def has_unique_labels(S):
@@ -101,7 +110,7 @@ def calc_entropy(S, attribute = None):
     if attribute == None:
         labelCounts = get_counts(S, "label")
         entropy = 0
-        for count in labelCounts.values:
+        for count in labelCounts.values():
             prob = count / len(S)
             if prob != 0:
                 entropy -= prob * np.log2(prob)
@@ -133,7 +142,7 @@ def calc_me(S, attribute = None):
     # Calculate the majority error for each attribute value
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
-        currME = calc_gini(subset)              # Majority error of this attribute value
+        currME = calc_me(subset)              # Majority error of this attribute value
         prob = counts[attributeValue] / len(S)  # Probability of getting this attribute value
         me += prob * currME                     # Calculate average
     return me
@@ -147,7 +156,7 @@ def calc_gini(S, attribute = None):
     if attribute == None:
         labelCounts = get_counts(S, "label")
         gini = 0
-        for count in labelCounts.values:
+        for count in labelCounts.values():
             prob = count / len(S)
             gini += prob**2
         return 1 - gini
@@ -160,36 +169,113 @@ def calc_gini(S, attribute = None):
         currGini = calc_gini(subset)            # Gini index of this attribute value
         prob = counts[attributeValue] / len(S)  # Probability of getting this attribute value
         gini += prob * currGini                  # Calculate average
-    return 1 - gini
+    return gini
 
-# Calculates the information gain for each attribute and returns the bets one
+# Calculates the information gain for each attribute and returns the best one
 def get_best_attribute(S, attributes, splitMetric = SplitMetric.ENTROPY):
-    values = [] # List of entropy/me/gini values cooresponding to each attribute
-
-    # Go through all the attributes
+    # Go through all the attributes and calculate the gain
+    bestAttribute = None
+    maxGain = -1  # Gain should alwasy be non-negative but this default ensures that an attribute is chosen if all gains are 0
     for a in attributes:
+        gain = 0
+        if splitMetric == SplitMetric.ENTROPY:
+            gain = calc_entropy(S) - calc_entropy(S, a)
+        elif splitMetric == SplitMetric.ME:
+            gain = calc_me(S) - calc_me(S, a)
+        elif splitMetric == SplitMetric.GINI:
+            gain = calc_gini(S) - calc_gini(S, a)
+        if gain > maxGain:
+            maxGain = gain
+            bestAttribute = a
 
-
+    return bestAttribute
 
 # ID3 learning algorithm
 # S is current data subset
 # attributes is current attribute list
 # splitMetric is the choice of metric to use when determining which attribute to split the data on
-def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY):
+def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, currDepth = 1):
     # Handle base cases of unique labels and empty attribute set
-    if has_unique_labels(S) or len(attributes) == 0:
+    if has_unique_labels(S) or len(attributes.keys()) == 0 or currDepth > maxDepth:
         leafNode = DecisionTreeNode()
         leafNode.isLeaf = True
         leafNode.value = find_most_common_label(S)
         return leafNode
 
+    # Create a root node for the tree
+    rootNode = DecisionTreeNode()
 
-if __name__ == '__main__':
+    # Choose the attribute that best splits S
+    a = get_best_attribute(S, attributes.keys(), splitMetric)
+    rootNode.value = a
 
+    for value in attributes[a]:
+        # Add a new tree branch
+        subset = get_subset(S, a, value)
+        if len(subset) == 0:
+            rootNode.childNodes[value] = DecisionTreeNode()
+            rootNode.childNodes[value].isLeaf = True
+            rootNode.childNodes[value].value = find_most_common_label(S)
+        else:
+            # Remove a from attributes
+            attributeSubset = attributes.copy()
+            attributeSubset.pop(a)
+
+            # Recursive call
+            rootNode.childNodes[value] = ID3(subset, attributeSubset, splitMetric, maxDepth, currDepth + 1)
+
+    return rootNode
+
+# Traverses the tree to get and return a prediction
+def get_prediction(rootNode, testExample):
+    currNode = rootNode
+
+    # End of tree has been reached so return label
+    if currNode.isLeaf:
+        return currNode.value
+
+    key = currNode.value        # Which attribute are we splitting on?
+    value = testExample[key]    # What value does the example have for this attribute
+    return get_prediction(rootNode.childNodes[value], testExample)    # Travel to the cooresponding node and get the prediction
+
+# Runs through all test examples and calculates the accuracy
+def calc_test_accuracy(rootNode, testData):
+    numCorrect = 0
+    for example in testData:
+        pred = get_prediction(rootNode, example)
+        if pred == example["label"]:
+            numCorrect += 1
+    return numCorrect / len(testData)
+
+# Wrapper so that variables are actually local
+def main():
     # Create the attribute set by parsing the data-desc.txt file
-    attributes = create_attribute_set();
+    attributes, attributeNameList = create_attribute_set();
 
     # Load the training examples
-    dataset = load_training_examples()
+    dataset = load_examples(attributeNameList)
+
+    metricStr = input("Which metric would you like to use for splitting? (E - entropy, M - majority error, G - gini index)")
+
+    depth = int(input("Please enter a maximum tree depth: " ))
+
+    metric = SplitMetric.ENTROPY
+    if(metricStr == "M"):
+        print("Running ID3 with Majority Error to a max depth of " + str(depth))
+        metric = SplitMetric.ME
+    elif(metricStr == "G"):
+        print("Running ID3 with Gini Index to a max depth of " + str(depth))
+        metric = SplitMetric.GINI
+    else:
+        print("Running ID3 with Entropy to a max depth of " + str(depth))
     
-    rootNode = ID3(dataset, attributes)
+    # Run ID3
+    rootNode = ID3(dataset, attributes, metric, depth)
+
+    # Load test data
+    testData = load_examples(attributeNameList, "test.csv")
+
+    print("Accuracy: " + str(calc_test_accuracy(rootNode, testData)))
+
+if __name__ == '__main__':
+    main()
