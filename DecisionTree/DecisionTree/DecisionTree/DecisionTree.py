@@ -275,7 +275,8 @@ def main():
     # Load test data
     testData = load_examples(attributeNameList, "test.csv")
 
-    print("Accuracy: " + str(calc_test_accuracy(rootNode, testData)))
+    print("Training error: " + str(1-calc_test_accuracy(rootNode, dataset)))
+    print("Test error: " + str(1-calc_test_accuracy(rootNode, testData)))
 
 if __name__ == '__main__':
     main()
