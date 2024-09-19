@@ -1,4 +1,6 @@
+from os import replace
 import numpy as np
+import statistics as st
 
 # Helper method to parse the data-desc.txt file. Returns a dictionary of attribute name as key and lsit of attribute values as value
 def create_attribute_set():
@@ -23,9 +25,10 @@ def create_attribute_set():
             attributeNameList.append(sections[0])
     return attributes, attributeNameList
 
-# Loads the data into a list of dictionaries
+# Loads the data into a list of dictionaries. Also returns a boolean indicating if any values were "unknown"
 def load_examples(attributes, filename = "train.csv"):
     dataset = []
+    foundUnknown = False
     with open(filename, 'r') as f:
         # For each example
         for line in f:
@@ -35,6 +38,8 @@ def load_examples(attributes, filename = "train.csv"):
 
             # For each attribute value, add it to a dictionary with the attribute name
             for i in range(len(items) - 1):
+                if items[i].lower() == "unknown":
+                    foundUnknown = True
                 currItem[attributes[i]] = items[i]
 
             # Add the label also
@@ -42,7 +47,53 @@ def load_examples(attributes, filename = "train.csv"):
 
             # Add the current item to the dataset
             dataset.append(currItem)
-    return dataset
+    return dataset, foundUnknown
+
+# Check if the dataset contains numeric attibute values and if so, replace it with a binary thresholding. If attrib
+def convert_numeric_to_binary(dataset, attributes = None):
+    if len(dataset) == 0:
+        return
+
+    # Check first item for numeric attribute values and put them in a list
+    numericAttributes = []
+    for key in dataset[0].keys():
+        if dataset[0][key].isnumeric():
+            numericAttributes.append(key)
+
+    # For each numeric attribute
+    for key in numericAttributes:
+        # Calculate the median value
+        numbers = []
+        try:
+            for item in dataset:
+                numbers.append(float(item[key]))
+        except:
+            # Non-numeric value found. Don't process this key anymore
+            continue
+        median = st.median(numbers)
+        # Check if each value is greater or less than the median and assign one of two strings
+        for item in dataset:
+            if float(item[key]) < median:
+                item[key] = "<" + str(median)
+            else:
+                item[key] = ">=" + str(median)
+
+        # Set the new correct attribute values if necessary
+        if attributes != None:
+            attributes[key] = ["<" + str(median), ">=" + str(median)]
+
+# Replaces any "unknown" values with the most common value
+def replace_unknown_values(dataset, attributes):
+    # Calculate all most common values
+    mostCommonValues = {}
+    for a in attributes.keys():
+        mostCommonValues[a] = find_most_common_value(dataset, a)
+
+    # Replace any unknowns
+    for item in dataset:
+        for key in item.keys():
+            if item[key].lower() == "unknown":
+                item[key] = mostCommonValues[key]
 
 # Enum to choose which metric to use when splitting the data
 class SplitMetric():
@@ -79,10 +130,10 @@ def get_counts(S, attribute):
 
     return counts
 
-# Returns the most common label in S
-def find_most_common_label(S):
+# Returns the most common value in S given attribute str. Default is for labels
+def find_most_common_value(S, str = "label"):
     # Count the labels first
-    labelCounts = get_counts(S, "label")
+    labelCounts = get_counts(S, str)
 
     # Find and return the label with the most
     countMax = 0
@@ -199,7 +250,7 @@ def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, cur
     if has_unique_labels(S) or len(attributes.keys()) == 0 or currDepth > maxDepth:
         leafNode = DecisionTreeNode()
         leafNode.isLeaf = True
-        leafNode.value = find_most_common_label(S)
+        leafNode.value = find_most_common_value(S)
         return leafNode
 
     # Create a root node for the tree
@@ -215,7 +266,7 @@ def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, cur
         if len(subset) == 0:
             rootNode.childNodes[value] = DecisionTreeNode()
             rootNode.childNodes[value].isLeaf = True
-            rootNode.childNodes[value].value = find_most_common_label(S)
+            rootNode.childNodes[value].value = find_most_common_value(S)
         else:
             # Remove a from attributes
             attributeSubset = attributes.copy()
@@ -253,11 +304,19 @@ def main():
     attributes, attributeNameList = create_attribute_set();
 
     # Load the training examples
-    dataset = load_examples(attributeNameList)
+    dataset, isUnknown = load_examples(attributeNameList)
 
+    # Convert numeric attributes to binary ones
+    convert_numeric_to_binary(dataset, attributes)
+
+    # Get user settings
     metricStr = input("Which metric would you like to use for splitting? (E - entropy, M - majority error, G - gini index)")
-
     depth = int(input("Please enter a maximum tree depth: " ))
+    replaceUnknown = False
+
+    # If unknown entries were found, ask if the user wants to replace them
+    if isUnknown:
+        replaceUnknown = input("Would you like to replace unknown attribute values with the most common? (Y/N) " ).lower() == "Y"
 
     metric = SplitMetric.ENTROPY
     if(metricStr == "M"):
@@ -268,13 +327,25 @@ def main():
         metric = SplitMetric.GINI
     else:
         print("Running ID3 with Entropy to a max depth of " + str(depth))
+
+    # Replace unknown values
+    if replaceUnknown:
+        replace_unknown_values(dataset, attributes)
     
     # Run ID3
     rootNode = ID3(dataset, attributes, metric, depth)
 
     # Load test data
-    testData = load_examples(attributeNameList, "test.csv")
+    testData, isUnknown = load_examples(attributeNameList, "test.csv")
 
+    # Convert numeric attributes to binary ones
+    convert_numeric_to_binary(testData)
+
+    # Replace unknown values
+    if replaceUnknown:
+        replace_unknown_values(testData, attributes)
+
+    # Print the results
     print("Training error: " + str(1-calc_test_accuracy(rootNode, dataset)))
     print("Test error: " + str(1-calc_test_accuracy(rootNode, testData)))
 
