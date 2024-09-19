@@ -49,38 +49,42 @@ def load_examples(attributes, filename = "train.csv"):
             dataset.append(currItem)
     return dataset, foundUnknown
 
-# Check if the dataset contains numeric attibute values and if so, replace it with a binary thresholding. If attrib
-def convert_numeric_to_binary(dataset, attributes = None):
+# Check if the dataset contains numeric attibute values and if so, replace it with a binary thresholding.
+def convert_numeric_to_binary(dataset, attributes):
     if len(dataset) == 0:
         return
 
     # Check first item for numeric attribute values and put them in a list
     numericAttributes = []
     for key in dataset[0].keys():
-        if dataset[0][key].isnumeric():
+        if dataset[0][key].strip("-").strip(".").isnumeric():
             numericAttributes.append(key)
 
     # For each numeric attribute
     for key in numericAttributes:
-        # Calculate the median value
-        numbers = []
-        try:
-            for item in dataset:
-                numbers.append(float(item[key]))
-        except:
-            # Non-numeric value found. Don't process this key anymore
-            continue
-        median = st.median(numbers)
+        median = 0
+        # Check if the median was already calculated. If so, use it
+        if len(attributes[key]) == 2 and attributes[key][0].find("<") != -1:
+            median = float(attributes[key][0].strip("<"))
+        else:
+            # Calculate the median value
+            numbers = []
+            try:
+                for item in dataset:
+                    numbers.append(float(item[key]))
+            except:
+                # Non-numeric value found. Don't process this key anymore
+                continue
+            median = st.median(numbers)
+            # Set the new correct attribute values
+            attributes[key] = ["<" + str(median), ">=" + str(median)]
+
         # Check if each value is greater or less than the median and assign one of two strings
         for item in dataset:
             if float(item[key]) < median:
                 item[key] = "<" + str(median)
             else:
                 item[key] = ">=" + str(median)
-
-        # Set the new correct attribute values if necessary
-        if attributes != None:
-            attributes[key] = ["<" + str(median), ">=" + str(median)]
 
 # Replaces any "unknown" values with the most common value
 def replace_unknown_values(dataset, attributes):
@@ -310,13 +314,13 @@ def main():
     convert_numeric_to_binary(dataset, attributes)
 
     # Get user settings
-    metricStr = input("Which metric would you like to use for splitting? (E - entropy, M - majority error, G - gini index)")
+    metricStr = input("Which metric would you like to use for splitting? (E - entropy, M - majority error, G - gini index)").upper()
     depth = int(input("Please enter a maximum tree depth: " ))
     replaceUnknown = False
 
     # If unknown entries were found, ask if the user wants to replace them
     if isUnknown:
-        replaceUnknown = input("Would you like to replace unknown attribute values with the most common? (Y/N) " ).lower() == "Y"
+        replaceUnknown = input("Would you like to replace unknown attribute values with the most common? (Y/N) " ).upper() == "Y"
 
     metric = SplitMetric.ENTROPY
     if(metricStr == "M"):
@@ -339,7 +343,7 @@ def main():
     testData, isUnknown = load_examples(attributeNameList, "test.csv")
 
     # Convert numeric attributes to binary ones
-    convert_numeric_to_binary(testData)
+    convert_numeric_to_binary(testData, attributes)
 
     # Replace unknown values
     if replaceUnknown:
