@@ -122,17 +122,33 @@ def has_unique_labels(S):
             return False
     return True
 
-# Returns a dictionary of counts for each possible attribute value
+# Returns a dictionary of counts for each possible attribute value. Allows for counting weighted examples
 def get_counts(S, attribute):
     counts = {}
     for item in S:
         value = item[attribute]
         if value in counts.keys():
-            counts[value] += 1
+            if "weight" in item.keys():
+                counts[value] += float(item["weight"])
+            else:
+                counts[value] += 1
         else:
-            counts[value] = 1
+            if "weight" in item.keys():
+                counts[value] = float(item["weight"])
+            else:
+                counts[value] = 1
 
     return counts
+
+# Calculates the total fracitonal count of items
+def get_total_count(S):
+    count = 0
+    for item in S:
+        if "weight" in item.keys():
+            count += float(item["weight"])
+        else:
+            count += 1
+    return count
 
 # Returns the most common value in S given attribute str. Default is for labels
 def find_most_common_value(S, str = "label"):
@@ -166,7 +182,7 @@ def calc_entropy(S, attribute = None):
         labelCounts = get_counts(S, "label")
         entropy = 0
         for count in labelCounts.values():
-            prob = count / len(S)
+            prob = count / get_total_count(S)
             if prob != 0:
                 entropy -= prob * np.log2(prob)
         return entropy
@@ -177,7 +193,7 @@ def calc_entropy(S, attribute = None):
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
         currEntropy = calc_entropy(subset)      # Entropy of this attribute value
-        prob = counts[attributeValue] / len(S)  # Probability of getting this attribute value
+        prob = counts[attributeValue] / get_total_count(S)  # Probability of getting this attribute value
         entropy += prob * currEntropy           # Calculate average
     return entropy
 
@@ -190,7 +206,7 @@ def calc_me(S, attribute = None):
     if attribute == None:
         labelCounts = get_counts(S, "label")
         maxCount = max(labelCounts.values())
-        return 1 - maxCount / len(S)
+        return 1 - maxCount / get_total_count(S)
 
     counts = get_counts(S, attribute)
     me = 0
@@ -198,7 +214,7 @@ def calc_me(S, attribute = None):
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
         currME = calc_me(subset)              # Majority error of this attribute value
-        prob = counts[attributeValue] / len(S)  # Probability of getting this attribute value
+        prob = counts[attributeValue] / get_total_count(S)  # Probability of getting this attribute value
         me += prob * currME                     # Calculate average
     return me
 
@@ -212,7 +228,7 @@ def calc_gini(S, attribute = None):
         labelCounts = get_counts(S, "label")
         gini = 0
         for count in labelCounts.values():
-            prob = count / len(S)
+            prob = count / get_total_count(S)
             gini += prob**2
         return 1 - gini
 
@@ -222,7 +238,7 @@ def calc_gini(S, attribute = None):
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
         currGini = calc_gini(subset)            # Gini index of this attribute value
-        prob = counts[attributeValue] / len(S)  # Probability of getting this attribute value
+        prob = counts[attributeValue] / get_total_count(S)  # Probability of getting this attribute value
         gini += prob * currGini                  # Calculate average
     return gini
 
@@ -301,6 +317,20 @@ def calc_test_accuracy(rootNode, testData):
         if pred == example["label"]:
             numCorrect += 1
     return numCorrect / len(testData)
+
+# Learns a decision tree of depth 1 and returns it. Each item in dataset should have a "weight" field specified if weighted training examples are desired
+def learn_decision_stump(dataset, attributes, splitMetric = SplitMetric.GINI, replaceUnknown = False):
+    # Convert numeric attributes to binary ones
+    convert_numeric_to_binary(dataset, attributes)
+
+    # Replace unknown values
+    if replaceUnknown:
+        replace_unknown_values(dataset, attributes)
+
+    # Run ID3
+    rootNode = ID3(dataset, attributes, splitMetric, 1)
+
+    return rootNode
 
 # Wrapper so that variables are actually local
 def main():
