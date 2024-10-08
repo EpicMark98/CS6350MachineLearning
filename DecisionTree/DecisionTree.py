@@ -177,12 +177,14 @@ def calc_entropy(S, attribute = None):
     if len(S) == 0:
         return 0
 
+    totalCount = get_total_count(S)
+
     # Calculate entropy of S
     if attribute == None:
         labelCounts = get_counts(S, "label")
         entropy = 0
         for count in labelCounts.values():
-            prob = count / get_total_count(S)
+            prob = count / totalCount
             if prob != 0:
                 entropy -= prob * np.log2(prob)
         return entropy
@@ -193,7 +195,7 @@ def calc_entropy(S, attribute = None):
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
         currEntropy = calc_entropy(subset)      # Entropy of this attribute value
-        prob = counts[attributeValue] / get_total_count(S)  # Probability of getting this attribute value
+        prob = counts[attributeValue] / totalCount  # Probability of getting this attribute value
         entropy += prob * currEntropy           # Calculate average
     return entropy
 
@@ -223,12 +225,14 @@ def calc_gini(S, attribute = None):
     if len(S) == 0:
         return 0
 
+    totalCount = get_total_count(S)
+
     # Calculate gini index of S
     if attribute == None:
         labelCounts = get_counts(S, "label")
         gini = 0
         for count in labelCounts.values():
-            prob = count / get_total_count(S)
+            prob = count / totalCount
             gini += prob**2
         return 1 - gini
 
@@ -238,7 +242,7 @@ def calc_gini(S, attribute = None):
     for attributeValue in counts.keys():
         subset = get_subset(S, attribute, attributeValue)
         currGini = calc_gini(subset)            # Gini index of this attribute value
-        prob = counts[attributeValue] / get_total_count(S)  # Probability of getting this attribute value
+        prob = counts[attributeValue] / totalCount  # Probability of getting this attribute value
         gini += prob * currGini                  # Calculate average
     return gini
 
@@ -315,22 +319,11 @@ def calc_test_accuracy(rootNode, testData):
     for example in testData:
         pred = get_prediction(rootNode, example)
         if pred == example["label"]:
-            numCorrect += 1
-    return numCorrect / len(testData)
-
-# Learns a decision tree of depth 1 and returns it. Each item in dataset should have a "weight" field specified if weighted training examples are desired
-def learn_decision_stump(dataset, attributes, splitMetric = SplitMetric.GINI, replaceUnknown = False):
-    # Convert numeric attributes to binary ones
-    convert_numeric_to_binary(dataset, attributes)
-
-    # Replace unknown values
-    if replaceUnknown:
-        replace_unknown_values(dataset, attributes)
-
-    # Run ID3
-    rootNode = ID3(dataset, attributes, splitMetric, 1)
-
-    return rootNode
+            if "weight" in example.keys():
+                numCorrect += float(example["weight"])
+            else:
+                numCorrect += 1
+    return numCorrect / get_total_count(testData)
 
 # Wrapper so that variables are actually local
 def main():

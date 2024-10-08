@@ -1,0 +1,5 @@
+4. Attribute information
+
+x: a,b,c
+y: a,b,c
+

@@ -1,0 +1,10 @@
+a,a,yes
+b,a,no
+c,a,no
+a,b,yes
+b,b,no
+b,b,no
+b,c,yes
+b,c,yes
+b,c,yes
+c,c,no
