@@ -36,7 +36,7 @@ def get_prediction(h, v, example):
         return "no"
 
 # AdaBoost algorithm
-def adaboost(S, attributes, T, reportError=False, testData=None):
+def adaboost(S, attributes, T, testData=None):
     # Initialize return variables
     hypotheses = []
     votes=[]
@@ -80,14 +80,13 @@ def adaboost(S, attributes, T, reportError=False, testData=None):
             weight = weight / Z
             example["weight"] = weight
 
-        # Report error if desired
-        if reportError:
-            trainErr = 1-calc_test_accuracy(hypotheses, votes, S)
-            testErr = 1-calc_test_accuracy(hypotheses, votes, testData)
-            trainingError.append(trainErr)
-            testError.append(testErr)
-            print("Training error for T=" + str(t) + ": " + "{:.2f}".format(trainErr))
-            print("Test error for T=" + str(t) + ": " + "{:.2f}".format(testErr))
+        # Report error
+        trainErr = 1-calc_test_accuracy(hypotheses, votes, S)
+        testErr = 1-calc_test_accuracy(hypotheses, votes, testData)
+        trainingError.append(trainErr)
+        testError.append(testErr)
+        print("Training error for T=" + str(t) + ": " + "{:.2f}".format(trainErr))
+        print("Test error for T=" + str(t) + ": " + "{:.2f}".format(testErr))
 
     # Create plots
     x = arange(1,T+1)
@@ -130,7 +129,7 @@ def main():
     dt.convert_numeric_to_binary(testData, attributes)
 
     # Run AdaBoost
-    hypotheses, votes = adaboost(dataset, attributes, 40, True, testData)
+    hypotheses, votes = adaboost(dataset, attributes, 80, testData)
 
 if __name__ == '__main__':
     main()
