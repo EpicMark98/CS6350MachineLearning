@@ -2,6 +2,8 @@ from os import replace
 import random
 import numpy as np
 import statistics as st
+import matplotlib.pyplot as plt
+from numpy import arange
 
 # Helper method to parse the data-desc.txt file. Returns a dictionary of attribute name as key and lsit of attribute values as value
 def create_attribute_set():
@@ -58,7 +60,9 @@ def convert_numeric_to_binary(dataset, attributes):
     # Check first item for numeric attribute values and put them in a list
     numericAttributes = []
     for key in dataset[0].keys():
-        if dataset[0][key].strip("-").strip(".").isnumeric():
+        if key == "label":
+            continue    # We do not handle numeric labels
+        if ("numeric" in attributes[key] or len(attributes[key]) == 2) and dataset[0][key].strip("-").strip(".").isnumeric():
             numericAttributes.append(key)
 
     # For each numeric attribute
@@ -346,7 +350,7 @@ def main():
 
     # Get user settings
     metricStr = input("Which metric would you like to use for splitting? (E - entropy, M - majority error, G - gini index)").upper()
-    depth = int(input("Please enter a maximum tree depth: " ))
+    depth = int(input("Please enter a maximum tree depth (0 to run all depths): " ))
     replaceUnknown = False
 
     # If unknown entries were found, ask if the user wants to replace them
@@ -366,9 +370,6 @@ def main():
     # Replace unknown values
     if replaceUnknown:
         replace_unknown_values(dataset, attributes)
-    
-    # Run ID3
-    rootNode = ID3(dataset, attributes, metric, depth)
 
     # Load test data
     testData, isUnknown = load_examples(attributeNameList, "test.csv")
@@ -379,10 +380,38 @@ def main():
     # Replace unknown values
     if replaceUnknown:
         replace_unknown_values(testData, attributes)
+    
+    if depth != 0:
+        # Run ID3
+        rootNode = ID3(dataset, attributes, metric, depth)
 
-    # Print the results
-    print("Training error: " + str(1-calc_test_accuracy(rootNode, dataset)))
-    print("Test error: " + str(1-calc_test_accuracy(rootNode, testData)))
+        # Print the results
+        print("Training error: " + str(1-calc_test_accuracy(rootNode, dataset)))
+        print("Test error: " + str(1-calc_test_accuracy(rootNode, testData)))
+    else:
+        # Create a tree for all depths and create a graph
+        trainingError = []
+        testError = []
+        for d in range(1, len(attributes)+1):
+            rootNode = ID3(dataset, attributes, metric, d)
+
+            # Print the results
+            train = 1-calc_test_accuracy(rootNode, dataset)
+            test = 1-calc_test_accuracy(rootNode, testData)
+            trainingError.append(train)
+            testError.append(test)
+            print("Training error for depth " + str(d) + ": " + "{:.3f}".format(train))
+            print("Test error for depth " + str(d) + ": " + "{:.3f}".format(test))
+
+        x = arange(1,d+1)
+        plt.plot(x, trainingError, label='Training Error')
+        plt.plot(x, testError, '-.', label='Test Error')
+        plt.legend()
+        plt.xlabel('Depth')
+        plt.ylabel('Error')
+        plt.title("Training and Test Error")
+        plt.savefig("error.png")
+        plt.close()
 
 if __name__ == '__main__':
     main()

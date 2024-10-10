@@ -1,0 +1,33 @@
+1. Title Bank Marketing
+
+2. Relevant Information
+
+   The data is related with direct marketing campaigns of a Portuguese banking institution. 
+   The marketing campaigns were based on phone calls. Often, more than one contact to the same client was required, 
+   in order to access if the product (bank term deposit) would be (or not) subscribed. 
+
+   The classification goal is to predict if the client will subscribe a term deposit (variable y).
+
+3. Number of Attributes 16 + output attribute.
+
+4. Attribute information
+
+age: numeric
+job: admin.,unknown,unemployed,management,housemaid,entrepreneur,student,blue-collar,self-employed,retired,technician,services 
+marital: married,divorced,single
+education: unknown,secondary,primary,tertiary
+default: yes,no
+balance: numeric
+housing: yes,no
+loan: yes,no
+contact: unknown,telephone,cellular 
+day: numeric
+month: jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec
+duration: numeric
+campaign: numeric
+pdays: numeric
+previous: numeric
+poutcome: unknown,other,failure,success
+
+  Output variable (desired target)
+  17 - y - has the client subscribed a term deposit? (binary "yes","no")

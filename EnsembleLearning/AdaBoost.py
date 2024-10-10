@@ -128,8 +128,17 @@ def main():
     # Convert numeric attributes to binary ones
     dt.convert_numeric_to_binary(testData, attributes)
 
+    T = int(input("Enter a T value: "))
+
     # Run AdaBoost
-    hypotheses, votes = adaboost(dataset, attributes, 80, testData)
+    hypotheses, votes = adaboost(dataset, attributes, T, testData)
 
 if __name__ == '__main__':
-    main()
+    print("ADABOOST")
+    print("Please choose which part you want to run.")
+    print("1 - AdaBoost with different T values while calculating training and test error")
+    print("2 - Quit")
+    choice = input("Enter your choice: ")
+
+    if(choice == '1'):
+        main()
