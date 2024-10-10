@@ -14,7 +14,7 @@ def calc_test_accuracy(hypotheses, testData):
             numCorrect += 1
     return numCorrect / len(testData)
 
-# Gets the Bagging prediction for a single example
+# Gets the RandomForests prediction for a single example
 def get_prediction(h, example):
     # Get the prediction for each tree
     netPredYes=0    # Net number of predictions in the "yes" direction (positive means final prediction is "yes")
@@ -31,8 +31,8 @@ def get_prediction(h, example):
     else:
         return "no"
 
-# Bagging algorithm
-def bagging(S, attributes, T, m, testData, calcError=False):
+# Random Forest algorithm
+def random_forest(S, attributes, T, m, testData, attSub, calcError=False):
     # Initialize return variables
     hypotheses = []
     trainingError=[]
@@ -46,7 +46,7 @@ def bagging(S, attributes, T, m, testData, calcError=False):
             samples.append(S[random.randint(0,len(S)-1)])
 
         # Create a decision tree
-        node = dt.ID3(samples, attributes, splitMetric=dt.SplitMetric.ENTROPY)
+        node = dt.ID3(samples, attributes, splitMetric=dt.SplitMetric.ENTROPY, randomForest=attSub)
         hypotheses.append(node)
 
         # Report error
@@ -92,8 +92,10 @@ def main():
 
     T = int(input("Enter a T value: "))
 
-    # Run Bagging
-    hypotheses = bagging(dataset, attributes, T, 3000, testData, True)
+    attSub = int(input("Enter the size of the attribute subsets {2, 4, 6}: "))
+
+    # Run Random Forest
+    hypotheses = random_forest(dataset, attributes, T, 3000, testData, attSub, True)
 
 def bias_and_variance():
 
@@ -113,22 +115,22 @@ def bias_and_variance():
     dt.convert_numeric_to_binary(testData, attributes)
 
     # Initialize variables
-    baggedPredictors = []
+    forests = []
 
-    # Create predictors (30 bags each with 70 trees)
+    # Create predictors (30 forests each with 70 trees)
     for i in range(30):
-        print("Creating bag #" + str(i+1))
+        print("Creating forest #" + str(i+1))
 
         # Randomly sample 1000 examples
         samples=[]
         for i in range(1000):
             samples.append(dataset[random.randint(0,len(dataset)-1)])
 
-        # Run Bagging
-        hypotheses = bagging(dataset, attributes,70, 500, testData)
+        # Run Random Forest
+        hypotheses = random_forest(dataset, attributes,70, 500, testData, 4)
 
-        # Add this bagged predictor to the list
-        baggedPredictors.append(hypotheses)
+        # Add this forest to the list
+        forests.append(hypotheses)
 
     # Calculate bias and variance on single predictors
     print("Calculating stats for single trees")
@@ -138,8 +140,8 @@ def bias_and_variance():
         averagePrediction = 0
         averageTruth = 0
         varianceSum = 0
-        for bag in baggedPredictors:
-            singleTree = bag[0]
+        for forest in forests:
+            singleTree = forest[0]
             pred = dt.get_prediction(singleTree, ex)
 
             # Add the predictions into the running sum for bias calculation
@@ -157,15 +159,15 @@ def bias_and_variance():
                 varianceSum += 4    # When the labels are different, the variance is 4. When they are the same, the variance is 0
 
         # Average the predictions and truth
-        averagePrediction /= len(baggedPredictors)
-        averageTruth /= len(baggedPredictors)
+        averagePrediction /= len(forests)
+        averageTruth /= len(forests)
 
         # Calculate bias
         bias = (averagePrediction - averageTruth) ** 2
         averageBias += bias
 
         # Calculate variance
-        variance = varianceSum / (len(baggedPredictors)-1)
+        variance = varianceSum / (len(forests)-1)
         averageVariance += variance
 
     # Average the bias and variance
@@ -177,16 +179,16 @@ def bias_and_variance():
     print("Average variance for single trees: " + "{:.4f}".format(averageVariance))
     print("Estimated squared error: " + "{:.4f}".format(averageBias + averageVariance))
 
-    # Calculate bias and variance on bagged predictors\
-    print("Calculating stats for bagged trees")
+    # Calculate bias and variance on random forest
+    print("Calculating stats for random forest")
     averageBias = 0
     averageVariance = 0
     for ex in testData:
         averagePrediction = 0
         averageTruth = 0
         varianceSum = 0
-        for bag in baggedPredictors:
-            pred = get_prediction(bag, ex)
+        for forest in forests:
+            pred = get_prediction(forest, ex)
 
             # Add the predictions into the running sum for bias calculation
             if pred == "yes":
@@ -203,15 +205,15 @@ def bias_and_variance():
                 varianceSum += 4    # When the labels are different, the variance is 4. When they are the same, the variance is 0
 
         # Average the predictions and truth
-        averagePrediction /= len(baggedPredictors)
-        averageTruth /= len(baggedPredictors)
+        averagePrediction /= len(forests)
+        averageTruth /= len(forests)
 
         # Calculate bias
         bias = (averagePrediction - averageTruth) ** 2
         averageBias += bias
 
         # Calculate variance
-        variance = varianceSum / (len(baggedPredictors)-1)
+        variance = varianceSum / (len(forests)-1)
         averageVariance += variance
 
     # Average the bias and variance
@@ -219,14 +221,14 @@ def bias_and_variance():
     averageVariance /= len(testData)
 
     # Print the results
-    print("Average bias for bagged trees: " + "{:.4f}".format(averageBias))
-    print("Average variance for bagged trees: " + "{:.4f}".format(averageVariance))
+    print("Average bias for random forest: " + "{:.4f}".format(averageBias))
+    print("Average variance for random forest: " + "{:.4f}".format(averageVariance))
     print("Estimated squared error: " + "{:.4f}".format(averageBias + averageVariance))
 
 if __name__ == '__main__':
-    print("BAGGING")
+    print("RANDOM FOREST")
     print("Please choose which part you want to run.")
-    print("1 - Bagging with different T values while calculating training and test error")
+    print("1 - Random Forest with different T values while calculating training and test error")
     print("2 - Bias and Variance Calculation")
     print("3 - Quit")
     choice = input("Enter your choice: ")

@@ -85,8 +85,8 @@ def adaboost(S, attributes, T, testData=None):
         testErr = 1-calc_test_accuracy(hypotheses, votes, testData)
         trainingError.append(trainErr)
         testError.append(testErr)
-        print("Training error for T=" + str(t) + ": " + "{:.2f}".format(trainErr))
-        print("Test error for T=" + str(t) + ": " + "{:.2f}".format(testErr))
+        print("Training error for T=" + str(t+1) + ": " + "{:.2f}".format(trainErr))
+        print("Test error for T=" + str(t+1) + ": " + "{:.2f}".format(testErr))
 
     # Create plots
     x = arange(1,T+1)

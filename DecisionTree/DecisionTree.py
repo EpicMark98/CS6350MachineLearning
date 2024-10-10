@@ -1,4 +1,5 @@
 from os import replace
+import random
 import numpy as np
 import statistics as st
 
@@ -269,7 +270,7 @@ def get_best_attribute(S, attributes, splitMetric = SplitMetric.ENTROPY):
 # S is current data subset
 # attributes is current attribute list
 # splitMetric is the choice of metric to use when determining which attribute to split the data on
-def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, currDepth = 1):
+def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, currDepth = 1, randomForest = 0):
     # Handle base cases of unique labels and empty attribute set
     if has_unique_labels(S) or len(attributes.keys()) == 0 or currDepth > maxDepth:
         leafNode = DecisionTreeNode()
@@ -280,8 +281,15 @@ def ID3(S, attributes, splitMetric = SplitMetric.ENTROPY, maxDepth = 100000, cur
     # Create a root node for the tree
     rootNode = DecisionTreeNode()
 
+    # Create a random subset of A if doing random forests and there are enough attributes remaining
+    attributeSubset = {}
+    if randomForest > 0 and len(attributes) > randomForest:
+        attributeSubset = dict(random.sample(attributes.items(), randomForest))
+    else:
+        attributeSubset = attributes.copy()
+
     # Choose the attribute that best splits S
-    a = get_best_attribute(S, attributes.keys(), splitMetric)
+    a = get_best_attribute(S, attributeSubset.keys(), splitMetric)
     rootNode.value = a
 
     for value in attributes[a]:
