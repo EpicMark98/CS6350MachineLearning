@@ -90,8 +90,148 @@ def main():
     # Convert numeric attributes to binary ones
     dt.convert_numeric_to_binary(testData, attributes)
 
+    T = input("Enter a T value: ")
+
     # Run AdaBoost
-    hypotheses = bagging(dataset, attributes, 80, 3000, testData)
+    hypotheses = bagging(dataset, attributes, T, 3000, testData, True)
+
+def bias_and_variance():
+
+    # Create the attribute set by parsing the data-desc.txt file
+    attributes, attributeNameList = dt.create_attribute_set();
+
+    # Load the training examples
+    dataset, isUnknown = dt.load_examples(attributeNameList)
+
+    # Convert numeric attributes to binary ones
+    dt.convert_numeric_to_binary(dataset, attributes)
+
+    # Load test data
+    testData, isUnknown = dt.load_examples(attributeNameList, "test.csv")
+
+    # Convert numeric attributes to binary ones
+    dt.convert_numeric_to_binary(testData, attributes)
+
+    # Initialize variables
+    baggedPredictors = []
+
+    # Create predictors (30 bags each with 70 trees)
+    for i in range(30):
+        print("Creating bag #" + str(i+1))
+
+        # Randomly sample 1000 examples
+        samples=[]
+        for i in range(1000):
+            samples.append(dataset[random.randint(0,len(dataset)-1)])
+
+        # Run AdaBoost
+        hypotheses = bagging(dataset, attributes,70, 500, testData)
+
+        # Add this bagged predictor to the list
+        baggedPredictors.append(hypotheses)
+
+    # Calculate bias and variance on single predictors
+    print("Calculating stats for single trees")
+    averageBias = 0
+    averageVariance = 0
+    for ex in testData:
+        averagePrediction = 0
+        averageTruth = 0
+        varianceSum = 0
+        for bag in baggedPredictors:
+            singleTree = bag[0]
+            pred = dt.get_prediction(singleTree, ex)
+
+            # Add the predictions into the running sum for bias calculation
+            if pred == "yes":
+                averagePrediction += 1
+            else:
+                averagePrediction -= 1
+            if ex["label"] == "yes":
+                averageTruth += 1
+            else:
+                averageTruth -= 1
+
+            # Add the current variance into the sum
+            if pred != ex["label"]:
+                varianceSum += 4    # When the labels are different, the variance is 4. When they are the same, the variance is 0
+
+        # Average the predictions and truth
+        averagePrediction /= len(baggedPredictors)
+        averageTruth /= len(baggedPredictors)
+
+        # Calculate bias
+        bias = (averagePrediction - averageTruth) ** 2
+        averageBias += bias
+
+        # Calculate variance
+        variance = varianceSum / (len(baggedPredictors)-1)
+        averageVariance += variance
+
+    # Average the bias and variance
+    averageBias /= len(testData)
+    averageVariance /= len(testData)
+
+    # Print the results
+    print("Average bias for single trees: " + "{:.4f}".format(averageBias))
+    print("Average variance for single trees: " + "{:.4f}".format(averageVariance))
+    print("Estimated squared error: " + "{:.4f}".format(averageBias + averageVariance))
+
+    # Calculate bias and variance on bagged predictors\
+    print("Calculating stats for bagged trees")
+    averageBias = 0
+    averageVariance = 0
+    for ex in testData:
+        averagePrediction = 0
+        averageTruth = 0
+        varianceSum = 0
+        for bag in baggedPredictors:
+            pred = get_prediction(bag, ex)
+
+            # Add the predictions into the running sum for bias calculation
+            if pred == "yes":
+                averagePrediction += 1
+            else:
+                averagePrediction -= 1
+            if ex["label"] == "yes":
+                averageTruth += 1
+            else:
+                averageTruth -= 1
+
+            # Add the current variance into the sum
+            if pred != ex["label"]:
+                varianceSum += 4    # When the labels are different, the variance is 4. When they are the same, the variance is 0
+
+        # Average the predictions and truth
+        averagePrediction /= len(baggedPredictors)
+        averageTruth /= len(baggedPredictors)
+
+        # Calculate bias
+        bias = (averagePrediction - averageTruth) ** 2
+        averageBias += bias
+
+        # Calculate variance
+        variance = varianceSum / (len(baggedPredictors)-1)
+        averageVariance += variance
+
+    # Average the bias and variance
+    averageBias /= len(testData)
+    averageVariance /= len(testData)
+
+    # Print the results
+    print("Average bias for bagged trees: " + "{:.4f}".format(averageBias))
+    print("Average variance for bagged trees: " + "{:.4f}".format(averageVariance))
+    print("Estimated squared error: " + "{:.4f}".format(averageBias + averageVariance))
 
 if __name__ == '__main__':
-    main()
+    print("BAGGING")
+    print("Please choose which part you want to run.")
+    print("1 - Bagging with different T values while calculating training and test error")
+    print("2 - Bias and Variance Calculation")
+    print("3 - Quit")
+    choice = input("Enter your choice: ")
+
+    if(choice == '1'):
+        main()
+    elif(choice == '2'):
+        bias_and_variance()
