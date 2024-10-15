@@ -1,6 +1,8 @@
 import DecisionTree as dt
 
 def RunDecisionTree(S, A, names, test):
+    depth = int(input("Enter a depth to limit to: "))
+
     print("Running decision tree algorithm")
 
     # Convert numeric attributes to binary ones
@@ -8,7 +10,7 @@ def RunDecisionTree(S, A, names, test):
     dt.convert_numeric_to_binary(test, A)
 
     # Run ID3
-    rootNode = dt.ID3(S, A, dt.SplitMetric.GINI, 20)
+    rootNode = dt.ID3(S, A, dt.SplitMetric.GINI, depth)
 
     # Generate predictions
     with open("predictions.csv", 'w+') as f:
