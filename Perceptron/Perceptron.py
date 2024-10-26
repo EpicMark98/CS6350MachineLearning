@@ -130,6 +130,14 @@ def average_perceptron(train, r, epochs):
 
     return A
 
+def WeightToStr(w):
+    str = "["
+    for v in w:
+        str += "{:.2f}".format(v) + ", "
+    str = str[:-2]
+    str += "]"
+    return str
+
 # Wrapper for main
 def main(choice):
     # Load examples
@@ -150,7 +158,7 @@ def main(choice):
         # Calculate test error
         error = calc_error_voted(testData, w_list, count_list)
         for i in range(len(w_list)):
-            print("Count: " + str(count_list[i]) + "     W: " + str(w_list[i]))
+            print("Count: " + str(count_list[i]) + "     Weights: " + WeightToStr(w_list[i]))
         print("Test error is " + "{:.4f}".format(error))
     else:
         finalW = average_perceptron(trainingData, 0.2, 10)
