@@ -177,4 +177,6 @@ if __name__ == '__main__':
     print("3 - Average Perceptron")
     print("4 - Quit")
     choice = input("Enter your choice: ")
-    main(int(choice))
+
+    if choice == '1' or choice == '2' or choice == '3':
+        main(int(choice))
