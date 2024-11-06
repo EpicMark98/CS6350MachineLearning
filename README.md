@@ -11,3 +11,6 @@ To run any of the Ensemble Learning algorithms, you  first need to populate data
 
 # Linear Regression
 To run Gradient Descent, you  first need to populate train.csv and test.csv with the training data and test data, respectively. These files should be in the same directory as GradientDescent.py. Then you simply run the python script with no arguments. The program will display some options and allow you as the user to choose whether you want the batch or stochastic version of the algorithm.
+
+# Perceptron
+To run Perceptron, you simply need to run the Perceptron.py script. Then you can choose which variant to run and it will train and test on the bank note data.
