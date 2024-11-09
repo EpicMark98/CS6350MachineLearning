@@ -2,6 +2,7 @@ import DecisionTree as dt
 import Bagging as bg
 import AdaBoost as ab
 import RandomForests as rf
+import Perceptron as pc
 
 # Runs the decision tree algorithm
 def RunDecisionTree(S, A, test):
@@ -70,6 +71,7 @@ def RunRandomForest(S, A, test):
 
 # Runs the AdaBoost algorithm
 def RunAdaBoost(S, A, test):
+    print("Running AdaBoost")
     # Convert numeric attributes to binary ones
     dt.convert_numeric_to_binary(S, A)
     dt.convert_numeric_to_binary(test, A)
@@ -86,29 +88,49 @@ def RunAdaBoost(S, A, test):
             pred = ab.get_prediction(hypotheses, votes, ex, True)
             f.write(ex["id"] + "," + pred + "\n")
 
+# Runs the Perceptron algorithm
+def RunPerceptron(S, test):
+    print("Running Perceptron")
+    final_W = pc.average_perceptron(S, 0.2, 10)
+
+    # Generate predictions
+    print("Generating predictions")
+    with open("predictions.csv", 'w+') as f:
+        f.write("ID,Prediction\n")
+        for ex in test:
+            pred = pc.get_prediction(ex[1:], final_W)
+            f.write(str(int(ex[0])) + "," + str(pred) + "\n")
+
+
 def main():
-    # Load the data
-    print("Loading the data, please wait...")
-    attributes, attributeNames = dt.create_attribute_set()
-    trainingData, foundUnknown = dt.load_examples(attributeNames)
-
-    # Replace unknown values
-    dt.replace_unknown_values(trainingData, attributes)     # TODO: change me to use averages when attribute is numeric
-
-    attributeNames.insert(0, 'id')  # Add ID because it is used in test data
-
-    testData, foundUnknown = dt.load_examples(attributeNames, 'test.csv')
-
-    # Replace unknown values
-    dt.replace_unknown_values(testData, attributes)     # TODO: change me to use averages when attribute is numeric
-
     # Get user choice
     print("Choose your algorithm")
     print("1 - Decision Tree")
     print("2 - Bagging")
     print("3 - Random Forest")
     print("4 - AdaBoost")
+    print("5 - Averaged Perceptron")
     choice = input("Enter your choice: ")
+
+    # Load the data
+    print("Loading the data, please wait...")
+    if choice == '5':
+        attributes, attributeNames = dt.create_attribute_set()
+        trainingData = pc.load_examples(attributes, attributeNames)
+        testData = pc.load_examples(attributes, attributeNames, "test.csv")
+    else:
+        attributes, attributeNames = dt.create_attribute_set()
+        trainingData, foundUnknown = dt.load_examples(attributeNames)
+
+        # Replace unknown values
+        dt.replace_unknown_values(trainingData, attributes)     # TODO: change me to use averages when attribute is numeric
+
+        attributeNames.insert(0, 'id')  # Add ID because it is used in test data
+
+        testData, foundUnknown = dt.load_examples(attributeNames, 'test.csv')
+
+        # Replace unknown values
+        dt.replace_unknown_values(testData, attributes)     # TODO: change me to use averages when attribute is numeric
 
     if choice == '1':
         RunDecisionTree(trainingData, attributes, testData)
@@ -118,6 +140,8 @@ def main():
         RunRandomForest(trainingData, attributes, testData)
     elif choice == '4':
         RunAdaBoost(trainingData, attributes, testData)
+    elif choice == '5':
+        RunPerceptron(trainingData, testData)
 
 if __name__ == '__main__':
     main()
