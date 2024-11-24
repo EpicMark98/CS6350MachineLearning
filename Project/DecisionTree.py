@@ -69,15 +69,20 @@ def convert_numeric_to_binary(dataset, attributes):
     for key in dataset[0].keys():
         if key == "label" or key == "id":
             continue    # We do not handle numeric labels
-        if ("numeric" in attributes[key] or len(attributes[key]) == 2) and dataset[0][key].strip("-").strip(".").isnumeric():
+        if ("numeric" in attributes[key] or len(attributes[key]) == 8) and dataset[0][key].strip("-").strip(".").isnumeric():
             numericAttributes.append(key)
 
     # For each numeric attribute
     for key in numericAttributes:
-        median = 0
         # Check if the median was already calculated. If so, use it
-        if len(attributes[key]) == 2 and attributes[key][0].find("<") != -1:
-            median = float(attributes[key][0].strip("<"))
+        if len(attributes[key]) == 8 and attributes[key][0].find("<") != -1:
+            q1 = float(attributes[key][0].strip("<"))
+            q2 = float(attributes[key][1].strip("<"))
+            q3 = float(attributes[key][2].strip("<"))
+            q4 = float(attributes[key][3].strip("<"))
+            q5 = float(attributes[key][4].strip("<"))
+            q6 = float(attributes[key][5].strip("<"))
+            q7 = float(attributes[key][6].strip("<"))
         else:
             # Calculate the median value
             numbers = []
@@ -87,23 +92,45 @@ def convert_numeric_to_binary(dataset, attributes):
             except:
                 # Non-numeric value found. Don't process this key anymore
                 continue
-            median = st.median(numbers)
+            q1 = np.percentile(numbers, 12.5)
+            q2 = np.percentile(numbers, 25)
+            q3 = np.percentile(numbers, 37.5)
+            q4 = np.percentile(numbers, 50)
+            q5 = np.percentile(numbers, 62.5)
+            q6 = np.percentile(numbers, 75)
+            q7 = np.percentile(numbers, 87.5)
             # Set the new correct attribute values
-            attributes[key] = ["<" + str(median), ">=" + str(median)]
+            attributes[key] = ["<" + str(q1), "<" + str(q2), "<" + str(q3), "<" + str(q4), "<" + str(q5), "<" + str(q6), "<" + str(q7), ">=" + str(q7)]
 
-        # Check if each value is greater or less than the median and assign one of two strings
+        # Find which of the 4 chunks the number is in
         for item in dataset:
-            if float(item[key]) < median:
-                item[key] = "<" + str(median)
+            if float(item[key]) < q1:
+                item[key] = "<" + str(q1)
+            elif float(item[key]) < q2:
+                item[key] = "<" + str(q2)
+            elif float(item[key]) < q3:
+                item[key] = "<" + str(q3)
+            elif float(item[key]) < q4:
+                item[key] = "<" + str(q4)
+            elif float(item[key]) < q5:
+                item[key] = "<" + str(q5)
+            elif float(item[key]) < q6:
+                item[key] = "<" + str(q6)
+            elif float(item[key]) < q7:
+                item[key] = "<" + str(q7)
             else:
-                item[key] = ">=" + str(median)
+                item[key] = ">=" + str(q7)
 
 # Replaces any "unknown" values with the most common value
 def replace_unknown_values(dataset, attributes):
     # Calculate all most common values
     mostCommonValues = {}
     for a in attributes.keys():
-        mostCommonValues[a] = find_most_common_value(dataset, a)
+        if ("numeric" in attributes[a] or len(attributes[a]) == 8) and dataset[0][a].strip("-").strip(".").isnumeric():
+            # Compute average instead
+            mostCommonValues[a] = find_average_value(dataset, a);
+        else:
+            mostCommonValues[a] = find_most_common_value(dataset, a)
 
     # Replace any unknowns
     for item in dataset:
@@ -175,6 +202,14 @@ def find_most_common_value(S, str = "label"):
             countMax = labelCounts[key]
             labelMax = key
     return labelMax
+
+# Returns the average value for examples
+def find_average_value(S, str):
+    total_sum = 0
+    for ex in S:
+        total_sum += float(ex[str])
+
+    return total_sum / len(S)
 
 # Creates a subset of S where the items have the given attribute value
 def get_subset(S, attributeName, attributeValue):

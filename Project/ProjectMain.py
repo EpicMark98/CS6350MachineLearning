@@ -123,14 +123,14 @@ def main():
         trainingData, foundUnknown = dt.load_examples(attributeNames)
 
         # Replace unknown values
-        dt.replace_unknown_values(trainingData, attributes)     # TODO: change me to use averages when attribute is numeric
+        dt.replace_unknown_values(trainingData, attributes)
 
         attributeNames.insert(0, 'id')  # Add ID because it is used in test data
 
         testData, foundUnknown = dt.load_examples(attributeNames, 'test.csv')
 
         # Replace unknown values
-        dt.replace_unknown_values(testData, attributes)     # TODO: change me to use averages when attribute is numeric
+        dt.replace_unknown_values(testData, attributes)
 
     if choice == '1':
         RunDecisionTree(trainingData, attributes, testData)
