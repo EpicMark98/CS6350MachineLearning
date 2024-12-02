@@ -184,28 +184,14 @@ class Network:
 
         return numWrong / len(data)
 
-# Wrapper for main
-def main():
-    width = int(input("Enter a hidden layer width: "))
-    initial = input("Choose the weight initialization method (\"zeros\" or \"random\"): ")
-
-    # Load examples
-    trainingData = load_examples()
-    testData = load_examples("test.csv")
-
-    # Instantiate the network
-    network = Network(2, width, len(trainingData[0])-1, initial=="random")
-
+# Wrapper for learning
+def LearnNetwork(trainingData, network):
     # Hyperparameters
-    epochs = 40
+    epochs = 15
     gamma0 = 0.05
     a = 1
 
     # Learn
-    if initial == "random":
-        print("Learning with network of width " + str(width) + " and random weight initialization")
-    else:
-        print("Learning with network of width " + str(width) + " and zero weight initialization")
     for e in range(epochs):
         print("Epoch " + str(e+1) + "/" + str(epochs))
         # Update the learning rate
@@ -219,6 +205,20 @@ def main():
             network.forwardPass(x_i)
             network.backpropagation(y_i)
             network.step(lr)
+
+# Wrapper for main
+def main():
+    width = int(input("Enter a hidden layer width: "))
+    initial = input("Choose the weight initialization method (\"zeros\" or \"random\"): ")
+
+    # Load examples
+    trainingData = load_examples()
+    testData = load_examples("test.csv")
+
+    # Instantiate the network
+    network = Network(2, width, len(trainingData[0])-1, initial=="random")
+
+    LearnNetwork(trainingData, network, initial)
 
     print("Training Error: " + str(network.calcError(trainingData)))
     print("Test Error: " + str(network.calcError(testData)))

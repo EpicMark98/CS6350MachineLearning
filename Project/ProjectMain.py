@@ -3,6 +3,7 @@ import Bagging as bg
 import AdaBoost as ab
 import RandomForests as rf
 import Perceptron as pc
+import NeuralNetworks as nn
 
 # Runs the decision tree algorithm
 def RunDecisionTree(S, A, test):
@@ -101,20 +102,38 @@ def RunPerceptron(S, test):
             pred = pc.get_prediction(ex[1:], final_W)
             f.write(str(int(ex[0])) + "," + str(pred) + "\n")
 
+# Runs the Neural Network algorithm
+def RunNeuralNetwork(S, test):
+    print("Running Neural Network")
+    # Instantiate the network
+    network = nn.Network(2, 5, len(S[0])-1, "random")
+    nn.LearnNetwork(S, network)
+    print("Training Error: " + str(network.calcError(S)))
+
+    # Generate predictions
+    print("Generating predictions")
+    with open("predictions.csv", 'w+') as f:
+        f.write("ID,Prediction\n")
+        for ex in test:
+            pred = network.forwardPass(ex[:-1])
+            f.write(str(int(ex[0])) + "," + str(pred) + "\n")
+
 
 def main():
     # Get user choice
-    print("Choose your algorithm")
-    print("1 - Decision Tree")
-    print("2 - Bagging")
-    print("3 - Random Forest")
-    print("4 - AdaBoost")
-    print("5 - Averaged Perceptron")
-    choice = input("Enter your choice: ")
+    #print("Choose your algorithm")
+    #print("1 - Decision Tree")
+    #print("2 - Bagging")
+    #print("3 - Random Forest")
+    #print("4 - AdaBoost")
+    #print("5 - Averaged Perceptron")
+    #print("6 - Neural Network")
+    #choice = input("Enter your choice: ")
+    choice = "4"    # After evaluating all these algorithms, I have decided to go with AdaBoost.
 
     # Load the data
     print("Loading the data, please wait...")
-    if choice == '5':
+    if choice == '5' or choice == '6':
         attributes, attributeNames = dt.create_attribute_set()
         trainingData = pc.load_examples(attributes, attributeNames)
         testData = pc.load_examples(attributes, attributeNames, "test.csv")
@@ -142,6 +161,8 @@ def main():
         RunAdaBoost(trainingData, attributes, testData)
     elif choice == '5':
         RunPerceptron(trainingData, testData)
+    elif choice == '6':
+        RunNeuralNetwork(trainingData, testData)
 
 if __name__ == '__main__':
     main()
