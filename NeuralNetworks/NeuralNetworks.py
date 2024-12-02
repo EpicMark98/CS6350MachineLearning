@@ -36,7 +36,7 @@ class Neuron:
             self.weights = np.zeros(prevLayerWidth)
             if randomInit:
                 for i in range(prevLayerWidth):
-                    self.weights[i] = random.gauss()
+                    self.weights[i] = random.gauss(0, 1)
 
     # Calculates new output using the weights and the activation on the prevLayer outputs
     def updateOutput(self, inputVals):
@@ -50,9 +50,21 @@ class Neuron:
             self.output = result
 
     # Calculates neuron weight gradients
-    def calcWeightGrads():
+    def calcWeightGrads(self, prevLayer):
+        for i in range(len(self.weightGrads)):
+            if self.useSigmoid:
+                self.weightGrads[i] = prevLayer.neurons[i].output * self.output * (1-self.output) * self.gradient
+            else:
+                self.weightGrads[i] = prevLayer.neurons[i].output * self.gradient
 
+    # Updates weights based on gradients and learning rate
+    def step(self, lr):
+        for i in range(len(self.weights)):
+            self.weights[i] -= self.weightGrads[i] * lr
 
+    # Prints the parameters
+    def printParams(self):
+        print(self.weights)
 
 # Class representing a layer
 class Layer:
@@ -63,9 +75,9 @@ class Layer:
         self.neurons = [None] * self.width
         for i in range(self.width):
             if prevLayer != None:
-                self.neurons[i] = Neuron(prevLayer.width, False, self.useSigmoid)
+                self.neurons[i] = Neuron(prevLayer.width, True, self.useSigmoid)
             else:
-                self.neurons[i] = Neuron(None, False, self.useSigmoid)
+                self.neurons[i] = Neuron(None, True, self.useSigmoid)
 
         # Hardcode the constant feature 1 to be the first neuron
         self.neurons[0].output = 1
@@ -99,13 +111,36 @@ class Layer:
         for i in range(1, self.width):
             grad = 0
             for j in range(nextLayer.width):
+                if nextLayer.width > 1 and j == 0:
+                    continue
                 currNeuron = nextLayer.neurons[j]
-                grad += currNeuron.gradient * currNeuron.output * (1-currNeuron.output) * currNeuron.weights[i]
+                if nextLayer.useSigmoid:
+                    grad += currNeuron.gradient * currNeuron.output * (1-currNeuron.output) * currNeuron.weights[i]
+                else:
+                    grad += currNeuron.gradient * currNeuron.weights[i]
             self.neurons[i].gradient = grad
 
         # Calculate weight gradients
         for i in range(1, self.width):
-            self.neurons[i].calcWeightGrads()
+            self.neurons[i].calcWeightGrads(prevLayer)
+
+    # Updates weights based on gradients
+    def step(self, lr):
+        for i in range(1, len(self.neurons)):
+            self.neurons[i].step(lr)
+
+        # Handle last layer
+        if self.width == 1:
+            self.neurons[0].step(lr)
+
+    # Prints the layer parameters
+    def printParams(self):
+        for i in range(1, self.width):
+            self.neurons[i].printParams()
+
+        # Handle last layer
+        if self.width == 1:
+            self.neurons[0].printParams()
 
 
 # Class representing a network
@@ -133,32 +168,73 @@ class Network:
     def backpropagation(self, label):
         # Update last layer gradient
         self.layers[-1].neurons[0].gradient = self.layers[-1].neurons[0].output - label
+        # Calculate weight gradients
+        for i in range(0, self.layers[-1].width):
+            self.layers[-1].neurons[i].calcWeightGrads(self.layers[-2])
 
         # Update hidden layer gradients
         for i in range(0, self.numHidden):
             self.layers[self.numHidden-i].calcNewGradients(self.layers[(self.numHidden-i)-1], self.layers[(self.numHidden-i)+1])
 
+    # Update the weights based on the gradients and learning rate
+    def step(self, lr):
+        for i in range(1, len(self.layers)):
+            self.layers[i].step(lr)
+
+    # Calculates prediction error given data with labels
+    def calcError(self, data):
+        numWrong = 0
+        for ex in data:
+            x_i = ex[:-1]
+            y_i = ex[-1]
+
+            pred = self.forwardPass(x_i)
+            if (pred >= 0 and y_i == -1):
+                numWrong += 1
+            elif (pred < 0 and y_i == 1):
+                numWrong += 1
+
+        return numWrong / len(data)
+
+    # Prints the parameters
+    def printParams(self):
+        for i in range(1, len(self.layers)):
+            print("LAYER " + str(i))
+            self.layers[i].printParams()
+
 # Wrapper for main
 def main():
     # Load examples
-    #trainingData = load_examples()
-    #testData = load_examples("test.csv")
+    trainingData = load_examples()
+    testData = load_examples("test.csv")
 
     # Instantiate the network
-    network = Network(2, 3, 3)
+    network = Network(2, 5, len(trainingData[0])-1)
 
-    # Hardcode the weights for the test example
-    network.layers[1].neurons[1].weights = np.array([-1, -2, -3])
-    network.layers[1].neurons[2].weights = np.array([1, 2, 3])
-    network.layers[2].neurons[1].weights = np.array([-1, -2, -3])
-    network.layers[2].neurons[2].weights = np.array([1, 2, 3])
-    network.layers[3].neurons[0].weights = np.array([-1, 2, -1.5])
+    # Hyperparameters
+    epochs = 50
+    gamma0 = 0.01
+    a = 1
 
-    testEx = np.array([1, 1, 1, 1])
+    # Learn
+    for e in range(epochs):
+        print("EPOCH " + str(e+1))
+        # Update the learning rate
+        lr = gamma0 / (1 + (gamma0 / a) * e)
+        print("LR: " + str(lr))
 
-    result = network.forwardPass(testEx[:-1])
+        np.random.shuffle(trainingData)
+        for ex in trainingData:
+            x_i = ex[:-1]
+            y_i = ex[-1]
 
-    print(result)
+            network.forwardPass(x_i)
+            network.backpropagation(y_i)
+            network.step(lr)
+
+        print("Training Error: " + str(network.calcError(trainingData)))
+        print("Test Error: " + str(network.calcError(testData)))
+        #network.printParams()
 
 if __name__ == '__main__':
         main()
