@@ -14,3 +14,12 @@ To run Gradient Descent, you  first need to populate train.csv and test.csv with
 
 # Perceptron
 To run Perceptron, you simply need to run the Perceptron.py script. Then you can choose which variant to run and it will train and test on the bank note data.
+
+# SVM
+To run SVM, you simply need to run the SVM.py script. Then you can choose which variant to run and it will train and test on the bank note data.
+
+# Neural Networks
+To run Neural Networks, you simply run the NeuralNetworks.py script. It then asks you to enter hyperparameter values and it will train and test on the bank note data.
+
+# Project
+The Project folder contains all the files used for the class project. I experimented with several different algorithms and eventually settled on AdaBoost but the other algorithms are still in the code even thought they are not used.
