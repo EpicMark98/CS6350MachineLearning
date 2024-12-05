@@ -145,5 +145,6 @@ if __name__ == '__main__':
     print("3 - Quit")
     choice = input("Enter your choice: ")
 
-    main(choice=='1')
+    if choice == '1' or choice == '2':
+        main(choice == '1')
 

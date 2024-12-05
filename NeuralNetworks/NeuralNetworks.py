@@ -1,5 +1,12 @@
 import numpy as np
 import random
+import torch
+from torch import nn
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+import torch.nn.init as init
+import pandas as pd
+
 
 # Loads the data into a list of numpy arrays.
 def load_examples(filename = "train.csv"):
@@ -223,5 +230,194 @@ def main():
     print("Training Error: " + str(network.calcError(trainingData)))
     print("Test Error: " + str(network.calcError(testData)))
 
+# Dataset for PyTorch to use
+class NNDataset(Dataset):
+    def __init__(
+        self,
+        csv_file="train.csv"
+    ):
+        # read csv file
+        data_csv = pd.read_csv(csv_file)
+        self.X = torch.tensor(data_csv.iloc[:, :-1].values, dtype=torch.float32)
+        self.y = torch.tensor(data_csv.iloc[:, -1].values, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.y)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.y[idx]
+
+def train_loop(dataloader, model, loss_fn, optimizer):
+    """
+    trains your model for an epoch
+    returns an array of loss values over the training epoch
+    """
+    # set model to train mode
+    model.train()
+    losses = list()
+
+    # the model can run on either CPU or CUDA (also supports AMD's ROCm)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    size = len(dataloader.dataset)
+    for batch, (X, y) in enumerate(dataloader):
+        # move images to GPU if needed
+        X, y = X.to(device), y.to(device)
+
+        # zero gradients from previous step
+        optimizer.zero_grad()
+
+        # compute prediction and loss
+        pred = model(X) # Remember forward()? This calls that.
+        loss = loss_fn(pred, y)
+
+        # backpropagation
+        loss.backward()
+        optimizer.step()
+
+    return losses
+
+
+def test_loop(dataloader, model, loss_fn):
+    """
+    tests your model on the test set
+    returns average MSE
+    """
+    # the model can run on either CPU or CUDA (also supports AMD's ROCm)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # set model to eval mode
+    model.eval()
+
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
+    test_loss = 0
+
+    with torch.no_grad():
+        for X, y in dataloader:
+            # move images to GPU if needed
+            X, y = X.to(device), y.to(device)
+
+            # compute prediction and loss
+            pred = model(X)
+            test_loss += loss_fn(pred, y).item()
+
+    test_loss /= num_batches
+    return test_loss
+
+class RELU_NN(nn.Module):
+    def __init__(self, num_features, width, depth):
+        super(RELU_NN, self).__init__()
+        layers = []
+        # Input layer
+        layers.append(nn.Linear(num_features, width))
+        layers.append(nn.ReLU())
+
+        # Hidden layers
+        for i in range(depth - 1):
+            layers.append(nn.Linear(width, width))
+            layers.append(nn.ReLU())
+
+        # Output layer
+        layers.append(nn.Linear(width, 1))
+        self.network = nn.Sequential(*layers)
+
+        # Apply he initialization
+        for layer in self.network:
+            if isinstance(layer, nn.Linear):
+                init.kaiming_uniform_(layer.weight, nonlinearity='relu')
+                if layer.bias is not None:
+                    init.zeros_(layer.bias)
+
+    def forward(self, x):
+        x = self.network(x)
+        return x
+
+class TANH_NN(nn.Module):
+    def __init__(self, num_features, width, depth):
+        super(TANH_NN, self).__init__()
+        layers = []
+        # Input layer
+        layers.append(nn.Linear(num_features, width))
+        layers.append(nn.Tanh())
+
+        # Hidden layers
+        for i in range(depth - 1):
+            layers.append(nn.Linear(width, width))
+            layers.append(nn.Tanh())
+
+        # Output layer
+        layers.append(nn.Linear(width, 1))
+        self.network = nn.Sequential(*layers)
+
+        # Apply Xavier initialization
+        for layer in self.network:
+            if isinstance(layer, nn.Linear):
+                init.xavier_uniform_(layer.weight)
+                if layer.bias is not None:
+                    init.zeros_(layer.bias)
+
+    def forward(self, x):
+        x = self.network(x)
+        return x
+
+def pytorch_nn():
+    # Get user parameters
+    activation = input("Please enter the activation function to use ('t' for tanh or 'r' for relu): ")
+    width = int(input("Enter the width: "))
+    depth = int(input("Enter the depth: "))
+
+    # Load the data
+    train_dataset = NNDataset("train.csv")
+    test_dataset = NNDataset("test.csv")
+    train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+    # Define model
+    model = None
+    if activation == 'r':
+        print("Using ReLU with width " + str(width) + " and depth " + str(depth))
+        model = RELU_NN(4, width, depth)
+    else:
+        print("Using tanh with width " + str(width) + " and depth " + str(depth))
+        model = TANH_NN(4, width, depth)
+    loss = nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters())
+
+    # Train the network
+    epochs = 40
+    for e in range(epochs):
+        model.train()
+        total_loss = 0
+        for X_batch, y_batch in train_dataloader:
+            optimizer.zero_grad()
+            outputs = model(X_batch).squeeze()
+            loss_val = loss(outputs, y_batch)
+            loss_val.backward()
+            optimizer.step()
+            total_loss += loss_val.item()
+        print(f"Epoch [{e+1}/{epochs}], Loss: {total_loss / len(train_dataloader):.4f}")
+
+    # Test
+    model.eval()
+    with torch.no_grad():
+        total_loss = 0
+        for X_batch, y_batch in test_dataloader:
+            outputs = model(X_batch).squeeze()
+            loss_val = loss(outputs, y_batch)
+            total_loss += loss_val.item()
+        print(f"Test Loss: {total_loss / len(test_dataloader):.4f}")
+    
+
 if __name__ == '__main__':
+    print("NEURAL NETWORKS")
+    print("Please choose which part you want to run.")
+    print("1 - Manual implementation")
+    print("2 - PyTorch (bonus question)")
+    print("3 - Quit")
+    choice = input("Enter your choice: ")
+
+    if choice == '1':
         main()
+    elif choice == '2':
+        pytorch_nn()
